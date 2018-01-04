@@ -92,7 +92,6 @@ public class IterableLineNumberReader extends LineNumberReader implements Iterat
      *
      * @return Value of the next line read or null if there's no more lines to be read. 
      */
-    @Override
     public String next(){
         if(readForward){
             //read next line
@@ -108,7 +107,6 @@ public class IterableLineNumberReader extends LineNumberReader implements Iterat
      * @see Iterator#remove()
      * @throws UnsupportedOperationException Not supported.
      */
-    @Override
     public void remove() {
         throw new UnsupportedOperationException();
     }
