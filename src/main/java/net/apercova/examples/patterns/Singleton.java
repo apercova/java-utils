@@ -98,7 +98,6 @@ public class Singleton {
 	private static Runnable testSingleton() {
 		return new Runnable() {
 			
-			@Override
 			public void run() {
 				System.out.println(String.format("Thread [%s]'s singleton test", Thread.currentThread().getName()));
 				Singleton eagerInstance             = Singleton.getEagerinstance();
