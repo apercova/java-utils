@@ -1,0 +1,112 @@
+package net.apercova.crypto.util;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.xml.bind.DatatypeConverter;
+
+import net.apercova.crypto.Encryptable;
+import net.apercova.crypto.PBEncryptable;
+import net.apercova.util.OrderedProperties;
+
+/**
+ * Clase de propiedades que implementa funcionalidad de cifrado
+ * mediante instancia de {@link Encryptable}
+ * @author <a href="https://twitter.com/apercova" target="_blank">{@literal @}apercova</a> <a href="https://github.com/apercova" target="_blank">https://github.com/apercova</a>
+ * @version 1.0 2017.12
+ *
+ */
+public class PBEncryptableProperties extends OrderedProperties {
+
+	private static final long serialVersionUID = -3355680734038165133L;
+	private static final Logger logger = Logger.getLogger(PBEncryptableProperties.class.getName());
+
+	protected static final String ENC_REGEXP = "^ENC\\[(.*)\\]$";
+	protected static final String ENCODING = "utf-8";
+	
+	protected transient PBEncryptable encryptable;
+	
+	protected PBEncryptableProperties() {
+		super();
+	}
+	
+	public PBEncryptableProperties(PBEncryptable encryptable) {
+		super();
+		this.encryptable = encryptable;
+	}
+
+	/**
+	 * Devuelve el valor de una propiedad cifrada.
+	 * @param key Propiedad
+	 * @return
+	 * @throws Exception Si no es posible descifrar el valor de la propiedad.
+	 */
+	public String getEncryptedProperty(String key){
+		if(encryptable == null)
+			throw new NullPointerException("encryptable");		
+		String value = getProperty(key);
+		if(isEncrypted(value)) {
+			try {
+				String[] aux = new String(decodeB64( unWrap(value)), ENCODING).split(":");
+				encryptable.setIv(DatatypeConverter.parseBase64Binary(aux[1]));
+				value = new String(encryptable.decrypt(DatatypeConverter.parseBase64Binary(aux[0])), ENCODING);
+			} catch (Exception e) {
+				value = getProperty(key);
+				logger.log(Level.WARNING, String.format("No se puede descifrar el valor de la propiedad: %s.%nValor devuelto: %s%n", key, value), e);
+			}			
+		}
+		return value;
+	}
+	
+	/**
+	 * Agrega una propiedad cifrada.
+	 * @param key Propiedad
+	 * @param value Valor
+	 * @return Valor previo de la propiedad.
+	 * @throws Exception Si no es posible cifrar el valor de la propiedad.
+	 */
+	public synchronized Object setEncryptedProperty(String key, String value) throws Exception {
+		if(encryptable == null)
+			throw new NullPointerException("encryptable");
+		return super.setProperty(key, wrap( encodeB64( (
+				encodeB64(encryptable.encrypt(value.getBytes(ENCODING))) + ":" + 
+		        encodeB64(encryptable.getIv()) ).getBytes(ENCODING)
+				)));
+	}
+	
+	/**
+	 * Determina si el valor se encuentra cifrado
+	 * @param value Valor a comparar
+	 * @return true si el valor se encuentra cifrado. false en caso contrario.
+	 */
+	protected boolean isEncrypted(String value) {
+		if(value == null)
+			return false;
+		Pattern pattern = Pattern.compile(ENC_REGEXP);
+		Matcher matcher = pattern.matcher(value);
+		return matcher.matches();
+	}
+	
+	protected String wrap(String value){
+		return String.format("ENC[%s]", (value==null?"":value));
+	}
+	
+	protected String unWrap(String value) {
+		Pattern pattern = Pattern.compile(ENC_REGEXP);
+		Matcher matcher = pattern.matcher(value);
+		if(matcher.matches()) {
+			value = matcher.group(1);
+		}
+		return value;
+	}
+
+	protected String encodeB64(byte[] bytes){
+		return DatatypeConverter.printBase64Binary(bytes);
+	}
+	
+	protected byte[] decodeB64(String b64){
+		return DatatypeConverter.parseBase64Binary(b64);
+	}
+}
